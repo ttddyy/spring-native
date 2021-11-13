@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -61,6 +62,7 @@ public class BuildTimeBeanDefinitionsRegistrar {
 		parseConfigurationClasses(context);
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		invokeBeanDefinitionRegistryPostProcessors(beanFactory);
+		instantiateFactoryBeans(beanFactory);
 		resolveBeanDefinitionTypes(beanFactory);
 		postProcessBeanDefinitions(beanFactory);
 		registerImportOriginRegistryIfNecessary(beanFactory);
@@ -74,6 +76,17 @@ public class BuildTimeBeanDefinitionsRegistrar {
 		configurationClassPostProcessor.setEnvironment(context.getEnvironment());
 		configurationClassPostProcessor.setResourceLoader(context);
 		configurationClassPostProcessor.postProcessBeanFactory(context.getBeanFactory());
+	}
+
+	private void instantiateFactoryBeans(ConfigurableListableBeanFactory beanFactory) {
+		for (String beanName : beanFactory.getBeanDefinitionNames()) {
+			if (beanFactory.isFactoryBean(beanName)) {
+				BeanDefinition bd = beanFactory.getMergedBeanDefinition(beanName);
+				if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+					beanFactory.getBean(BeanFactory.FACTORY_BEAN_PREFIX + beanName);
+				}
+			}
+		}
 	}
 
 	private void invokeBeanDefinitionRegistryPostProcessors(ConfigurableListableBeanFactory beanFactory) {
